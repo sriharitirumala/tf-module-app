@@ -2,9 +2,9 @@ resource "aws_launch_template" "main" {
   name = "${var.component}-${var.env}"
 
 
-#  iam_instance_profile {
-#    name = "test"
-#  }
+  #  iam_instance_profile {
+  #    name = "test"
+  #  }
 
   image_id = data.aws_ami.ami.id
 
@@ -18,14 +18,19 @@ resource "aws_launch_template" "main" {
   tag_specifications {
     resource_type = "instance"
 
-    tags = merge (
+    tags = merge(
       var.tags,
-      {Name = "${var.component}-${var.env}"}
+      { Name = "${var.component}-${var.env}" }
     )
   }
 
-#  user_data = filebase64("${path.module}/example.sh")
+  user_data = base64encode(templatefile("${path.module}/userdata.sh", {
+    component = var.component
+    env = var.env
+
+  } ))
 }
+
 
 resource "aws_autoscaling_group" "main" {
   desired_capacity   = var.desired_capacity
