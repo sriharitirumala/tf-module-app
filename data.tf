@@ -5,6 +5,4 @@ data "aws_ami" "ami"  {
 }
 
 
-data "aws_caller_identity" "account" {
-
-}
+data "aws_caller_identity" "account" { }
