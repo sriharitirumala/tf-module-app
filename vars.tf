@@ -14,4 +14,3 @@ variable "dns_domain" {}
 variable "alb_dns_name" {}
 
 
-
