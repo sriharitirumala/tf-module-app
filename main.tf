@@ -34,10 +34,13 @@ resource "aws_launch_template" "main" {
 
 
 resource "aws_autoscaling_group" "main" {
+  name               = "${var.component}-${var.env}"
   desired_capacity   = var.desired_capacity
   max_size           = var.max_size
   min_size           = var.min_size
   vpc_zone_identifier = var.subnets
+  target_group_arns = [aws_lb_target_group.main.arn]
+
   launch_template {
     id      = aws_launch_template.main.id
     version = "$Latest"
@@ -53,22 +56,22 @@ resource "aws_autoscaling_group" "main" {
 resource "aws_security_group" "main" {
   name        = "${var.component}-${var.env}"
   description = "${var.component}-${var.env}"
-  vpc_id = var.vpc_id
+  vpc_id      = var.vpc_id
 
   ingress {
-    description      = "ssh"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = var.bastion_cidr
+    description = "ssh"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.bastion_cidr
   }
 
   ingress {
-    description      = "app"
-    from_port        = var.port
-    to_port          = var.port
-    protocol         = "tcp"
-    cidr_blocks      = var.allow_app_to
+    description = "app"
+    from_port   = var.port
+    to_port     = var.port
+    protocol    = "tcp"
+    cidr_blocks = var.allow_app_to
   }
 
   egress {
@@ -78,9 +81,26 @@ resource "aws_security_group" "main" {
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
   }
+  tags = merge(
+    var.tags,
+    { Name = "${var.component}-${var.env}" }
+  )
+}
+
+resource "aws_lb_target_group" "main" {
+  name     = "${var.component}-${var.env}"
+  port     = var.port
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+  health_check {
+    enabled = true
+    healthy_threshold = 2
+    unhealthy_threshold = 5
+    interval = 5
+    timeout = 4
+  }
   tags = merge (
     var.tags,
-    {Name = "${var.component}-${var.env}" }
-    )
-  }
-
+    { Name = "${var.component}-${var.env}"}
+  )
+}
