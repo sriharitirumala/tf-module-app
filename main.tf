@@ -56,7 +56,7 @@ resource "aws_security_group" "main" {
   vpc_id = var.vpc_id
 
   ingress {
-    description      = "app"
+    description      = "ssh"
     from_port        = 22
     to_port          = 22
     protocol         = "tcp"
