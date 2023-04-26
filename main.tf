@@ -1,20 +1,17 @@
 resource "aws_launch_template" "main" {
   name = "${var.component}-${var.env}"
 
-
-    iam_instance_profile {
-      name = aws_iam_instance_profile.main.name
-    }
+  iam_instance_profile {
+    name = aws_iam_instance_profile.main.name
+  }
 
   image_id = data.aws_ami.ami.id
-
   instance_market_options {
     market_type = "spot"
   }
 
-  instance_type = var.instance_type
+  instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.main.id]
-
 
   tag_specifications {
     resource_type = "instance"
@@ -25,31 +22,37 @@ resource "aws_launch_template" "main" {
     )
   }
 
+  tag_specifications {
+    resource_type = "spot-instances-request"
+
+    tags = merge(
+      var.tags,
+      { Name = "${var.component}-${var.env}", Monitor = "yes" }
+    )
+  }
+
   user_data = base64encode(templatefile("${path.module}/userdata.sh", {
     component = var.component
-    env = var.env
-
-  } ))
+    env       = var.env
+  }))
 }
 
-
 resource "aws_autoscaling_group" "main" {
-  name               = "${var.component}-${var.env}"
-  desired_capacity   = var.desired_capacity
-  max_size           = var.max_size
-  min_size           = var.min_size
+  name                = "${var.component}-${var.env}"
+  desired_capacity    = var.desired_capacity
+  max_size            = var.max_size
+  min_size            = var.min_size
   vpc_zone_identifier = var.subnets
-  target_group_arns = [aws_lb_target_group.main.arn]
+  target_group_arns   = [aws_lb_target_group.main.arn]
 
   launch_template {
     id      = aws_launch_template.main.id
     version = "$Latest"
   }
-  tag{
-    key = "name"
+  tag {
+    key                 = "Name"
     propagate_at_launch = true
-    value = "${var.component}-${var.env}"
-
+    value               = "${var.component}-${var.env}"
   }
 }
 
@@ -61,7 +64,7 @@ resource "aws_autoscaling_policy" "asg-cpu-rule" {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
-    target_value = 40.0
+    target_value = 20.0
   }
 }
 
@@ -72,7 +75,7 @@ resource "aws_security_group" "main" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "ssh"
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -80,7 +83,7 @@ resource "aws_security_group" "main" {
   }
 
   ingress {
-    description = "app"
+    description = "APP"
     from_port   = var.port
     to_port     = var.port
     protocol    = "tcp"
@@ -88,7 +91,7 @@ resource "aws_security_group" "main" {
   }
 
   ingress {
-    description = "prometheus"
+    description = "PROMETHEUS"
     from_port   = 9100
     to_port     = 9100
     protocol    = "tcp"
@@ -102,6 +105,7 @@ resource "aws_security_group" "main" {
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
   }
+
   tags = merge(
     var.tags,
     { Name = "${var.component}-${var.env}" }
@@ -121,9 +125,10 @@ resource "aws_lb_target_group" "main" {
     timeout             = 4
     path                = "/health"
   }
-  tags = merge (
+  deregistration_delay = 30
+  tags = merge(
     var.tags,
-    { Name = "${var.component}-${var.env}"}
+    { Name = "${var.component}-${var.env}" }
   )
 }
 
@@ -150,3 +155,4 @@ resource "aws_lb_listener_rule" "listener_rule" {
     }
   }
 }
+
